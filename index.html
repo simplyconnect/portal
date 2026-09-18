@@ -13,51 +13,33 @@
 
 <!-- LOGIN -->
 <div class="login-wrap" id="loginScreen">
-  <div class="login-panel-form">
-    <div class="login-inner">
-      <img class="login-logo" src="assets/logo.png" alt="Simply Connect">
-      <h1>HR Portal</h1>
-      <p class="login-sub">Sign in to view your attendance, payroll and requests.</p>
-      <div class="login-error" id="loginError"></div>
-      <form id="loginForm" onsubmit="return false;">
-        <label>Username<input type="text" id="loginUser" placeholder="e.g. abdulsaboor#5" autocomplete="username"></label>
-        <label>Password<input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></label>
-        <button type="submit" class="btn-primary" id="loginBtn">Sign in</button>
-      </form>
-      <p class="login-note">Simply Connect HR Portal · Powered by Google Sheets</p>
+  <div class="login-card">
+    <div class="login-card-top">
+      <div class="login-logo-pill"><img class="login-logo" src="assets/logo.png" alt="Simply Connect"></div>
+      <button type="button" class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+        <span class="theme-icon moon">&#9789;</span>
+        <span class="theme-icon sun hidden">&#9728;</span>
+      </button>
     </div>
-  </div>
-  <div class="login-panel-visual">
-    <div class="carousel">
-      <div class="carousel-track" id="carouselTrack">
-        <div class="carousel-slide active" data-i="0">
-          <img src="assets/onboarding.png" alt="Onboarding">
-          <h3>Effortless Onboarding</h3>
-          <p>Add new employees in seconds and get them set up with a login automatically.</p>
-        </div>
-        <div class="carousel-slide" data-i="1">
-          <img src="assets/data-report.png" alt="Data report">
-          <h3>Real-time Reports</h3>
-          <p>Every dashboard, payslip and attendance record is pulled live from Google Sheets.</p>
-        </div>
-        <div class="carousel-slide" data-i="2">
-          <img src="assets/confirmed-attendance.png" alt="Confirmed attendance">
-          <h3>Attendance, Confirmed</h3>
-          <p>Every check-in and check-out from your biometric devices, tracked automatically.</p>
-        </div>
-      </div>
-      <div class="carousel-arrows">
-        <button id="carPrev" type="button">&#8249;</button>
-        <button id="carNext" type="button">&#8250;</button>
-      </div>
-      <div class="carousel-dots" id="carDots">
-        <button class="active" data-i="0"></button>
-        <button data-i="1"></button>
-        <button data-i="2"></button>
-      </div>
+    <h1>Welcome back</h1>
+    <p class="login-sub">Sign in to view your attendance dashboard.</p>
+
+    <div class="role-toggle" id="roleToggle">
+      <div class="role-toggle-highlight" id="roleHighlight"></div>
+      <button type="button" class="role-btn active" data-role="Employee">Employee</button>
+      <button type="button" class="role-btn" data-role="Admin">Admin</button>
     </div>
+
+    <div class="login-error" id="loginError"></div>
+    <form id="loginForm" onsubmit="return false;">
+      <label id="loginUserLabel">Employee ID or email<input type="text" id="loginUser" placeholder="e.g. abdulsaboor#5" autocomplete="username"></label>
+      <label>Password<input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></label>
+      <button type="submit" class="btn-primary" id="loginBtn">Sign in</button>
+    </form>
+    <p class="login-note" id="loginNote">Simply Connect HR Portal · Powered by Google Sheets</p>
   </div>
 </div>
+
 
 <!-- APP SHELL -->
 <div id="appShell" class="app-shell hidden">
@@ -141,7 +123,7 @@
           <label>From<input type="date" id="dashFrom"></label>
           <label>To<input type="date" id="dashTo"></label>
           <label>Department<select id="dashDeptFilter"><option value="">All departments</option></select></label>
-          <label>Status<select id="dashStatusFilter"><option value="">All statuses</option><option>Present</option><option>Late</option><option>Absent</option><option>Half-Day</option><option>Leave</option></select></label>
+          <label>Status<select id="dashStatusFilter"><option value="">All statuses</option><option>Present</option><option>Absent</option><option>Weekend</option><option>Leave</option></select></label>
           <div class="spacer"></div>
           <button class="btn-secondary" id="dashApplyFilters">Apply filters</button>
         </div>
@@ -212,7 +194,7 @@
           <label>From<input type="date" id="attFrom"></label>
           <label>To<input type="date" id="attTo"></label>
           <label>Search<input type="text" id="attSearch" placeholder="Name or Employee ID"></label>
-          <label>Status<select id="attStatusFilter"><option value="">All statuses</option><option>Present</option><option>Late</option><option>Absent</option><option>Half-Day</option><option>Leave</option></select></label>
+          <label>Status<select id="attStatusFilter"><option value="">All statuses</option><option>Present</option><option>Absent</option><option>Weekend</option><option>Leave</option></select></label>
           <div class="spacer"></div>
           <button class="btn-secondary" id="attApplyFilters">Apply filters</button>
         </div>
@@ -267,7 +249,7 @@
         </div>
         <div class="table-wrap">
           <div class="table-scroll"><table>
-            <thead><tr><th>Employee</th><th>Department</th><th>Present</th><th>Late</th><th>Absent</th><th>Attendance Rate</th></tr></thead>
+            <thead><tr><th>Employee</th><th>Department</th><th>Present</th><th>Weekend</th><th>Absent</th><th>Attendance Rate</th></tr></thead>
             <tbody id="reportsBody"><tr><td colspan="6" class="empty-mini">Loading…</td></tr></tbody>
           </table></div>
         </div>
