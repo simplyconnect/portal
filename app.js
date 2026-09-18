@@ -2,7 +2,7 @@
    CONFIG — Apps Script deploy karne ke baad /exec URL yahan daalein
 ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzRESiiJcGoxCPdkeNOHMBns4FAq6LLYTxHm_TrvGb_n1lD_Ug_YPe7OlMh8rWyZOJk/exec'
+  API_URL: 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'
 };
 
 /* =====================================================================
@@ -60,27 +60,44 @@ function presenceColor(status) {
 }
 
 /* =====================================================================
-   LOGIN CAROUSEL (autoplay, arrows, dots, pause on hover)
+   DARK MODE TOGGLE (animated icon swap, remembers choice)
 ===================================================================== */
-(function initCarousel() {
-  const slides = document.querySelectorAll('.carousel-slide');
-  const dots = document.querySelectorAll('.carousel-dots button');
-  let idx = 0, timer = null;
-  function show(i) {
-    idx = (i + slides.length) % slides.length;
-    slides.forEach((s, n) => s.classList.toggle('active', n === idx));
-    dots.forEach((d, n) => d.classList.toggle('active', n === idx));
+(function initTheme() {
+  const toggle = document.getElementById('themeToggle');
+  const moon = toggle.querySelector('.moon'), sun = toggle.querySelector('.sun');
+  function apply(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    moon.classList.toggle('hidden', theme === 'dark');
+    sun.classList.toggle('hidden', theme !== 'dark');
   }
-  function next() { show(idx + 1); }
-  function play() { timer = setInterval(next, 4000); }
-  function pause() { clearInterval(timer); }
-  document.getElementById('carNext').addEventListener('click', () => { next(); pause(); play(); });
-  document.getElementById('carPrev').addEventListener('click', () => { show(idx - 1); pause(); play(); });
-  dots.forEach(d => d.addEventListener('click', () => { show(Number(d.dataset.i)); pause(); play(); }));
-  const visual = document.querySelector('.login-panel-visual');
-  visual.addEventListener('mouseenter', pause);
-  visual.addEventListener('mouseleave', play);
-  play();
+  let saved = 'light';
+  try { saved = localStorage.getItem('sc-theme') || 'light'; } catch (e) {}
+  apply(saved);
+  toggle.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    apply(next);
+    try { localStorage.setItem('sc-theme', next); } catch (e) {}
+  });
+})();
+
+/* =====================================================================
+   ROLE TOGGLE (Employee / Admin — animated sliding pill)
+===================================================================== */
+let SELECTED_ROLE = 'Employee';
+(function initRoleToggle() {
+  const wrap = document.getElementById('roleToggle');
+  wrap.querySelectorAll('.role-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      SELECTED_ROLE = btn.dataset.role;
+      wrap.dataset.active = SELECTED_ROLE;
+      wrap.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b === btn));
+      const isAdmin = SELECTED_ROLE === 'Admin';
+      document.getElementById('loginUserLabel').firstChild.textContent = isAdmin ? 'Admin ID or email' : 'Employee ID or email';
+      document.getElementById('loginUser').placeholder = isAdmin ? 'e.g. syedaliashar#234' : 'e.g. abdulsaboor#5';
+      document.getElementById('loginError').style.display = 'none';
+    });
+  });
 })();
 
 /* =====================================================================
@@ -96,13 +113,18 @@ async function doLogin() {
   const btn = document.getElementById('loginBtn');
   errBox.style.display = 'none';
 
-  if (!user || !pass) { errBox.textContent = 'Username aur password dono darj karein.'; errBox.style.display = 'block'; return; }
+  if (!user || !pass) { errBox.textContent = 'Employee ID/email aur password dono darj karein.'; errBox.style.display = 'block'; return; }
   if (CONFIG.API_URL.includes('PASTE_YOUR')) { errBox.textContent = 'Backend abhi connect nahi hua — CONFIG.API_URL mein Apps Script URL daalein.'; errBox.style.display = 'block'; return; }
 
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
-    const data = await apiGet('login', { username: user, password: pass });
+    const data = await apiGet('login', { username: user, password: pass, role: SELECTED_ROLE });
     if (!data.success) { errBox.textContent = data.message || 'Invalid login'; errBox.style.display = 'block'; return; }
+    if (data.role !== SELECTED_ROLE) {
+      errBox.textContent = `Ye ${data.role} account hai — "${data.role}" tab select kar ke dobara try karein.`;
+      errBox.style.display = 'block';
+      return;
+    }
     SESSION = data;
     enterApp();
   } catch (e) {
@@ -219,9 +241,17 @@ async function loadDashboard() {
     renderWhoIsOff(dash);
 
     const att = await apiGet('attendance', SESSION.role === 'Admin' ? {} : { empId: SESSION.empId });
-    CACHE.attendance = att;
+    if (SESSION.role === 'Admin' && dash.todayFull) {
+      // Aaj ke din ke liye backend ne sab employees ka status nikal ke diya hai
+      // (jin ki attendance row nahi thi unko bhi Weekend/Absent tag kar diya) —
+      // isay asal attendance rows ke sath merge kar do taky filters/table poori tasveer dikhayein.
+      const others = att.filter(r => r['Date'] !== dash.todayFull[0]?.['Date']);
+      CACHE.attendance = others.concat(dash.todayFull);
+    } else {
+      CACHE.attendance = att;
+    }
     document.getElementById('welcomeDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-    const mine = att.filter(r => String(r['EMP ID']) === String(SESSION.empId) && r['Date'] === todayStr());
+    const mine = CACHE.attendance.filter(r => String(r['EMP ID']) === String(SESSION.empId) && r['Date'] === todayStr());
     if (mine.length) {
       document.getElementById('welcomeIn').textContent = mine[0]['Punch In'] || '—';
       document.getElementById('welcomeOut').textContent = mine[0]['Punch Out'] || '—';
@@ -238,15 +268,14 @@ function renderKpis(d) {
       { n: d.totalEmployees, l: 'Total employees', cls:'', ic:'&#128101;' },
       { n: d.presentToday, l: 'Present today', cls:'status-Present', ic:'&#10003;' },
       { n: d.absentToday, l: 'Absent', cls:'status-Absent', ic:'&#10005;' },
-      { n: d.lateToday, l: 'Late', cls:'status-Late', ic:'&#8987;' },
-      { n: d.earlyLeaveToday || 0, l: 'Early leave', cls:'status-Late', ic:'&#8618;' },
-      { n: d.onLeaveToday || 0, l: 'On leave', cls:'', ic:'&#128197;' }
+      { n: d.weekendToday || 0, l: 'Weekend off', cls:'', ic:'&#128197;' },
+      { n: d.onLeaveToday || 0, l: 'On leave', cls:'status-Late', ic:'&#9971;' }
     ];
   } else {
     cards = [
       { n: d.presentThisMonth, l: 'Present (Month)', cls:'status-Present', ic:'&#10003;' },
-      { n: d.lateThisMonth, l: 'Late (Month)', cls:'status-Late', ic:'&#8987;' },
       { n: d.absentThisMonth, l: 'Absent (Month)', cls:'status-Absent', ic:'&#10005;' },
+      { n: d.weekendThisMonth || 0, l: 'Weekend (Month)', cls:'', ic:'&#128197;' },
       { n: d.myPendingRequests, l: 'My pending requests', cls:'', ic:'&#128203;' }
     ];
   }
@@ -424,10 +453,10 @@ async function openProfile(empId) {
   const monthRows = att.filter(r => String(r['Date']).startsWith(thisMonth));
   const present = monthRows.filter(r => r['Status'] === 'Present').length;
   const absent = monthRows.filter(r => r['Status'] === 'Absent').length;
-  const late = monthRows.filter(r => r['Status'] === 'Late').length;
-  const rate = monthRows.length ? Math.round((present / monthRows.length) * 100) : 0;
+  const weekend = monthRows.filter(r => r['Status'] === 'Weekend').length;
+  const rate = (present+absent) ? Math.round((present / (present+absent)) * 100) : 0;
   document.getElementById('profMiniStats').innerHTML = [
-    [present,'Present (Month)'],[absent,'Absent (Month)'],[late,'Late (Month)'],[rate+'%','Attendance rate']
+    [present,'Present (Month)'],[absent,'Absent (Month)'],[weekend,'Weekend (Month)'],[rate+'%','Attendance rate']
   ].map(([n,l]) => `<div class="mini-stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
 
   const attBody = document.getElementById('profAttendanceBody');
@@ -638,10 +667,10 @@ function renderReports() {
   body.innerHTML = emps.map(e => {
     const rows = monthRows.filter(r => String(r['EMP ID']) === String(e['EMP ID']));
     const present = rows.filter(r=>r['Status']==='Present').length;
-    const late = rows.filter(r=>r['Status']==='Late').length;
+    const weekend = rows.filter(r=>r['Status']==='Weekend').length;
     const absent = rows.filter(r=>r['Status']==='Absent').length;
-    const rate = rows.length ? Math.round((present/rows.length)*100) : 0;
-    return `<tr><td>${esc(e['Name'])} (EMP${esc(e['EMP ID'])})</td><td>${esc(e['Department'])}</td><td>${present}</td><td>${late}</td><td>${absent}</td><td>${rate}%</td></tr>`;
+    const rate = (present+absent) ? Math.round((present/(present+absent))*100) : 0;
+    return `<tr><td>${esc(e['Name'])} (EMP${esc(e['EMP ID'])})</td><td>${esc(e['Department'])}</td><td>${present}</td><td>${weekend}</td><td>${absent}</td><td>${rate}%</td></tr>`;
   }).join('');
 }
 document.getElementById('reportSearch').addEventListener('input', debounce(renderReports, 200));
