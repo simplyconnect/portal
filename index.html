@@ -32,8 +32,8 @@
 
     <div class="login-error" id="loginError"></div>
     <form id="loginForm" onsubmit="return false;">
-      <label id="loginUserLabel">Employee ID or email<input type="text" id="loginUser" placeholder="e.g. abdulsaboor#5" autocomplete="username"></label>
-      <label>Password<input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></label>
+      <label id="loginUserLabel">Employee ID or email<input type="text" id="loginUser" placeholder="e.g. abdulsaboor#5" autocomplete="off" spellcheck="false" autocapitalize="off"></label>
+      <label>Password<input type="password" id="loginPass" placeholder="••••••••" autocomplete="off" spellcheck="false"></label>
       <button type="submit" class="btn-primary" id="loginBtn">Sign in</button>
     </form>
     <p class="login-note" id="loginNote">Simply Connect HR Portal · Powered by Google Sheets</p>
@@ -58,7 +58,7 @@
 
   <div class="main">
     <header class="topbar">
-      <img class="tb-logo" src="assets/logo.png" alt="Simply Connect">
+      <div class="tb-logo-chip"><img class="tb-logo" src="assets/logo.png" alt="Simply Connect"></div>
       <button class="tb-company" id="tbCompany">Simply Connect <span class="caret">&#9662;</span></button>
       <div class="topbar-right">
         <button class="tb-icon" title="Help">?</button>
@@ -79,6 +79,7 @@
 
       <!-- DASHBOARD -->
       <div id="pageDashboard">
+        <p class="page-sub hidden" id="dashRefNote" style="margin-top:-6px;"></p>
         <div class="kpi-row" id="kpiRow">
           <div class="kpi-card"><div class="kpi-number skeleton" style="width:40px;height:26px;"></div><div class="kpi-label skeleton" style="width:80px;height:10px;margin-top:8px;"></div></div>
           <div class="kpi-card"><div class="kpi-number skeleton" style="width:40px;height:26px;"></div><div class="kpi-label skeleton" style="width:80px;height:10px;margin-top:8px;"></div></div>
@@ -336,6 +337,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
