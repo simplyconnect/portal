@@ -109,7 +109,7 @@ let SELECTED_ROLE = 'Employee';
       wrap.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b === btn));
       const isAdmin = SELECTED_ROLE === 'Admin';
       document.getElementById('loginUserLabel').firstChild.textContent = isAdmin ? 'Admin ID or email' : 'Employee ID or email';
-      document.getElementById('loginUser').placeholder = isAdmin ? '' : '';
+      document.getElementById('loginUser').placeholder = isAdmin ? 'Enter your id' : 'Enter your password';
       document.getElementById('loginError').style.display = 'none';
     });
   });
