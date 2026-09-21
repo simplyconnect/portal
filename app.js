@@ -1,6 +1,8 @@
 /* =====================================================================
    CONFIG — Apps Script deploy karne ke baad /exec URL yahan daalein
 ===================================================================== */
+const LOGO_DATA_URI = 'data:image/png;base64,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';
+
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbzRESiiJcGoxCPdkeNOHMBns4FAq6LLYTxHm_TrvGb_n1lD_Ug_YPe7OlMh8rWyZOJk/exec'
 };
@@ -608,8 +610,11 @@ function filterPayroll() {
 }
 document.getElementById('payrollSearch').addEventListener('input', debounce(filterPayroll, 200));
 document.getElementById('payrollMonthFilter').addEventListener('change', filterPayroll);
+const PAYSLIP_REGISTRY = {}; // uid -> payroll row, PDF generate karne ke liye
+
 function payslipHtml(r) {
   const uid = 'payslip_' + String(r['EMP ID']) + '_' + String(r['Month']).replace(/[^A-Za-z0-9]/g, '');
+  PAYSLIP_REGISTRY[uid] = r;
   return `<div class="payslip-card" id="${uid}">
     <div class="payslip-head">
       <img class="payslip-logo" src="assets/logo.png" alt="Simply Connect">
@@ -628,27 +633,100 @@ function payslipHtml(r) {
         <div class="ps-line total"><span>Net salary</span><span>${money(r['Net Salary'])}</span></div>
       </div>
     </div>
-    <div class="payslip-footer"><button class="btn-secondary" data-pdf-btn onclick="downloadPayslipPdf('${uid}','${esc(r['Employee Name'])}_${esc(r['Month'])}')">&#11015; Download PDF</button></div>
+    <div class="payslip-footer"><button class="btn-secondary" onclick="downloadPayslipPdf('${uid}')">&#11015; Download PDF</button></div>
   </div>`;
 }
-function downloadPayslipPdf(elId, filenameBase) {
-  const el = document.getElementById(elId);
-  if (!el) { toast('Payslip element nahi mila', 'error'); return; }
-  if (typeof html2pdf === 'undefined') { toast('PDF library load nahi ho saki — internet connection check karein', 'error'); return; }
-  const btn = el.querySelector('[data-pdf-btn]');
-  if (btn) btn.style.visibility = 'hidden'; // button khud PDF mein nahi aana chahiye
-  const filename = String(filenameBase || 'payslip').replace(/\s+/g, '_') + '.pdf';
-  html2pdf().set({ margin: 10, filename, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
-    .from(el).save()
-    .then(() => { if (btn) btn.style.visibility = ''; })
-    .catch(() => { if (btn) btn.style.visibility = ''; toast('PDF banane mein masla aaya', 'error'); });
+
+/**
+ * PDF ko seedha jsPDF se "draw" karta hai (koi screenshot/html2canvas nahi) — is liye
+ * logo aur layout hamesha sahi, sharp aur consistent aata hai, chahe browser/zoom kuch bhi ho.
+ * Format aap ke diye hue "Earning Statement" reference se milta julta hai.
+ */
+function downloadPayslipPdf(uid) {
+  const r = PAYSLIP_REGISTRY[uid];
+  if (!r) { toast('Payslip data nahi mila', 'error'); return; }
+  if (typeof window.jspdf === 'undefined') { toast('PDF library load nahi ho saki — internet connection check karein', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 18;
+  let y = 22;
+
+  // Header: logo + company name (left), "Earning Statement" (right)
+  try { doc.addImage(LOGO_DATA_URI, 'PNG', margin, y - 9, 16, 13); } catch (e) {}
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(30, 42, 56);
+  doc.text('Simply Connect', margin + 20, y - 2);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120, 130, 150);
+  doc.text('HR & Payroll', margin + 20, y + 3);
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(46, 95, 163);
+  doc.text('Earning Statement', pageW - margin, y, { align: 'right' });
+
+  y += 12;
+  doc.setDrawColor(225, 227, 235); doc.setLineWidth(0.3);
+  doc.line(margin, y, pageW - margin, y);
+  y += 12;
+
+  // Employee info box
+  const boxH = 28;
+  doc.setDrawColor(30, 42, 56); doc.setLineWidth(0.4);
+  doc.rect(margin, y, 95, boxH);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 22, 28);
+  doc.text(String(r['Employee Name'] || ''), margin + 5, y + 9);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(100, 106, 120);
+  doc.text('Employee ID: EMP' + esc0(r['EMP ID']), margin + 5, y + 16);
+  doc.text('Pay Period: ' + esc0(r['Month']), margin + 5, y + 22);
+
+  y += boxH + 14;
+
+  // Section header bar
+  doc.setFillColor(30, 42, 56);
+  doc.rect(margin, y, pageW - margin * 2, 9, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(255, 255, 255);
+  doc.text('Pay Period Earnings — ' + esc0(r['Month']), margin + 3, y + 6.2);
+  y += 9 + 10;
+
+  const rows = [
+    ['Basic Salary', money(r['Basic Salary'])],
+    ['Allowances', money(r['Allowances'])],
+    ['Overtime (' + (r['Overtime Hours'] || 0) + ' hrs @ ' + money(r['Overtime Rate'] || 0) + ')', money(r['Overtime Amount'])],
+    ['Gross Salary', money(r['Gross Salary'])],
+    ['Deductions', '(' + money(r['Deductions']) + ')']
+  ];
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(40, 42, 48);
+  rows.forEach(([label, amt], i) => {
+    if (i === 3) { doc.setFont('helvetica', 'bold'); } else { doc.setFont('helvetica', 'normal'); }
+    doc.text(label, margin + 2, y);
+    doc.text(String(amt), pageW - margin - 2, y, { align: 'right' });
+    y += 8.5;
+  });
+
+  y += 3;
+  doc.setDrawColor(30, 42, 56); doc.setLineWidth(0.5);
+  doc.line(margin, y, pageW - margin, y);
+  y += 10;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 22, 28);
+  doc.text('Take Home Earnings', margin + 2, y);
+  doc.setTextColor(219, 158, 0); doc.setFontSize(15);
+  doc.text(money(r['Net Salary']), pageW - margin - 2, y, { align: 'right' });
+
+  y += 22;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(160, 164, 175);
+  doc.text('Generated by Simply Connect HR Portal on ' + new Date().toLocaleDateString('en-GB'), margin, y);
+
+  const filename = (String(r['Employee Name'] || 'payslip').replace(/\s+/g, '_') + '_' + String(r['Month']).replace(/[^A-Za-z0-9]/g, '')) + '.pdf';
+  doc.save(filename);
 }
+function esc0(v) { return v === undefined || v === null ? '' : String(v); }
+
 function showPayslip(i) {
   const box = document.getElementById('payslipDetail');
   box.innerHTML = payslipHtml(CACHE.payroll[i]);
   box.classList.remove('hidden');
   box.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
+
 
 /* =====================================================================
    REQUESTS
