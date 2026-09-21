@@ -2,7 +2,7 @@
    CONFIG — Apps Script deploy karne ke baad /exec URL yahan daalein
 ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzRESiiJcGoxCPdkeNOHMBns4FAq6LLYTxHm_TrvGb_n1lD_Ug_YPe7OlMh8rWyZOJk/exec'
+  API_URL: 'https://script.google.com/macros/s/AKfycbz3lCrqywsf1QiZoFS9Vab5nTu1eQIwBulAIx1YwERc4WtqWH2cVA1VclBiNw80E2-NMg/exec'
 };
 
 /* =====================================================================
@@ -45,6 +45,20 @@ function toast(msg, type) {
 function initials(name) { return String(name || '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '--'; }
 function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function money(n) { return 'Rs ' + Number(n || 0).toLocaleString(); }
+/** Backend "HH:mm:ss" (24-hour) bhejta hai — Google Sheet jaisi hi 12-hour AM/PM shakal mein dikhane ke liye */
+function formatTime12(t) {
+  if (!t) return '—';
+  const raw = String(t).trim();
+  if (/[AaPp][Mm]\s*$/.test(raw)) return raw; // pehle se hi "5:15:00 PM" jaisi shakal mein hai — dobara process na karo
+  const parts = raw.split(':');
+  if (parts.length < 2) return raw;
+  const h = Number(parts[0]);
+  if (isNaN(h)) return raw;
+  const m = parts[1], s = (parts[2] || '00').padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12; if (h12 === 0) h12 = 12;
+  return `${h12}:${m}:${s} ${ampm}`;
+}
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function avatarColor(name) {
@@ -150,12 +164,13 @@ function enterApp() {
   document.getElementById('setEmpId').textContent = SESSION.empId || '—';
   document.getElementById('setDept').textContent = SESSION.department || '—';
 
-  const today = new Date();
   document.getElementById('dashFrom').value = todayStr();
   document.getElementById('dashTo').value = todayStr();
-  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
-  document.getElementById('attFrom').value = monthAgo.toISOString().slice(0,10);
-  document.getElementById('attTo').value = todayStr();
+  // Attendance (full) page ko From/To khali chhodo — matlab "sab records dikhao"
+  // (profile tab ki tarah), taaki purani/seed data bhi by-default dikhe. User chahe
+  // to filter laga kar khud range choose kar sakta hai.
+  document.getElementById('attFrom').value = '';
+  document.getElementById('attTo').value = '';
   document.getElementById('payrollMonthFilter').value = todayStr().slice(0,7);
 
   renderCalendar();
@@ -241,27 +256,41 @@ async function loadDashboard() {
     renderWhoIsOff(dash);
 
     const att = await apiGet('attendance', SESSION.role === 'Admin' ? {} : { empId: SESSION.empId });
+
     if (SESSION.role === 'Admin' && dash.todayFull) {
-      // Aaj ke din ke liye backend ne sab employees ka status nikal ke diya hai
-      // (jin ki attendance row nahi thi unko bhi Weekend/Absent tag kar diya) —
-      // isay asal attendance rows ke sath merge kar do taky filters/table poori tasveer dikhayein.
-      const others = att.filter(r => r['Date'] !== dash.todayFull[0]?.['Date']);
+      // Aaj ke liye data ho to wahi, warna backend ne khud sab se latest date (refDate)
+      // ka poora synthesized snapshot bhej diya hai — usay asal rows ke sath merge karo.
+      const others = att.filter(r => r['Date'] !== dash.refDate);
       CACHE.attendance = others.concat(dash.todayFull);
+      // Dashboard ka apna filter bhi usi reference date par sync kar do, warna KPI aur
+      // table ka data mismatch lagega (KPI kuch aur din ka, table khaali).
+      document.getElementById('dashFrom').value = dash.refDate;
+      document.getElementById('dashTo').value = dash.refDate;
+      document.getElementById('dashTableTitle').textContent = dash.isToday
+        ? 'Attendance — Today'
+        : `Attendance — ${dash.refDate} (sab se recent data)`;
     } else {
       CACHE.attendance = att;
     }
-    document.getElementById('welcomeDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-    const mine = CACHE.attendance.filter(r => String(r['EMP ID']) === String(SESSION.empId) && r['Date'] === todayStr());
-    if (mine.length) {
-      document.getElementById('welcomeIn').textContent = mine[0]['Punch In'] || '—';
-      document.getElementById('welcomeOut').textContent = mine[0]['Punch Out'] || '—';
-      document.getElementById('welcomeHours').innerHTML = (mine[0]['Working Hours'] || '0') + ' <span style="font-size:13px;font-weight:500;color:var(--muted);">hrs today</span>';
+
+    if (dash.latestRecord) {
+      const rec = dash.latestRecord;
+      const isToday = rec['Date'] === todayStr();
+      document.getElementById('welcomeDate').textContent = isToday
+        ? new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+        : `Last recorded attendance: ${rec['Date']}`;
+      document.getElementById('welcomeIn').textContent = formatTime12(rec['Punch In']);
+      document.getElementById('welcomeOut').textContent = formatTime12(rec['Punch Out']);
+      document.getElementById('welcomeHours').innerHTML = (rec['Working Hours'] || '0') + ' <span style="font-size:13px;font-weight:500;color:var(--muted);">hrs' + (isToday ? ' today' : '') + '</span>';
+    } else {
+      document.getElementById('welcomeDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
     }
     applyDashboardFilters();
   } catch (e) { toast('Dashboard load failed: ' + e.message, 'error'); }
 }
 function renderKpis(d) {
   const row = document.getElementById('kpiRow');
+  const note = document.getElementById('dashRefNote');
   let cards;
   if (SESSION.role === 'Admin') {
     cards = [
@@ -271,6 +300,12 @@ function renderKpis(d) {
       { n: d.weekendToday || 0, l: 'Weekend off', cls:'', ic:'&#128197;' },
       { n: d.onLeaveToday || 0, l: 'On leave', cls:'status-Late', ic:'&#9971;' }
     ];
+    if (d.isToday === false) {
+      note.textContent = `Aaj ke liye attendance data maujood nahi — sab se recent data (${d.refDate}) dikhaya ja raha hai.`;
+      note.classList.remove('hidden');
+    } else {
+      note.classList.add('hidden');
+    }
   } else {
     cards = [
       { n: d.presentThisMonth, l: 'Present (Month)', cls:'status-Present', ic:'&#10003;' },
@@ -278,6 +313,12 @@ function renderKpis(d) {
       { n: d.weekendThisMonth || 0, l: 'Weekend (Month)', cls:'', ic:'&#128197;' },
       { n: d.myPendingRequests, l: 'My pending requests', cls:'', ic:'&#128203;' }
     ];
+    if (d.refMonth && d.refMonth !== todayStr().slice(0,7)) {
+      note.textContent = `Is mahine ka data nahi mila — sab se recent mahine (${d.refMonth}) ka summary dikhaya ja raha hai.`;
+      note.classList.remove('hidden');
+    } else {
+      note.classList.add('hidden');
+    }
   }
   row.innerHTML = cards.map((c,i) => `<div class="kpi-card ${c.cls}" style="animation-delay:${i*0.04}s"><div class="kpi-icon">${c.ic}</div><div class="kpi-number">${c.n ?? 0}</div><div class="kpi-label">${c.l}</div></div>`).join('');
 }
@@ -334,7 +375,7 @@ function renderAttendanceTable(bodyId, rows, withDept) {
   body.innerHTML = rows.slice().sort((a,b) => (a['Date'] < b['Date'] ? 1 : -1)).map(r => `
     <tr><td>${esc(r['Date'])}</td><td>EMP${esc(r['EMP ID'])}</td><td>${esc(r['Employee Name'])}</td>
     ${withDept ? `<td>${esc(empByDept.get(String(r['EMP ID'])) || '—')}</td>` : ''}
-    <td>${esc(r['Punch In'] || '—')}</td><td>${esc(r['Punch Out'] || '—')}</td><td>${esc(r['Working Hours'] || '0')}</td>
+    <td>${formatTime12(r['Punch In'])}</td><td>${formatTime12(r['Punch Out'])}</td><td>${esc(r['Working Hours'] || '0')}</td>
     <td><span class="badge ${esc(r['Status'])}">${esc(r['Status'])}</span></td></tr>`).join('');
 }
 
@@ -441,7 +482,13 @@ async function openProfile(empId) {
   document.getElementById('profRoleLine').textContent = `${emp['Designation'] || ''} · ${emp['Department'] || ''} · EMP${emp['EMP ID']}`;
   document.getElementById('profJoined').textContent = 'Joined ' + (emp['D.O.J'] || '—');
   document.getElementById('profTenure').textContent = tenureLabel(emp['D.O.J']);
-  document.getElementById('profEditBtn').onclick = () => openEmpModal(emp);
+  const editBtn = document.getElementById('profEditBtn');
+  if (SESSION.role === 'Admin') {
+    editBtn.classList.remove('hidden');
+    editBtn.onclick = () => openEmpModal(emp);
+  } else {
+    editBtn.classList.add('hidden'); // Employee khud apni profile edit nahi kar sakta — sirf Admin kar sakta hai
+  }
 
   document.getElementById('profInfoGrid').innerHTML = [
     ['Employee ID', 'EMP' + emp['EMP ID']], ['Department', emp['Department']], ['Designation', emp['Designation']],
@@ -461,7 +508,7 @@ async function openProfile(empId) {
 
   const attBody = document.getElementById('profAttendanceBody');
   attBody.innerHTML = att.length ? att.slice().sort((a,b)=>a['Date']<b['Date']?1:-1).map(r => `
-    <tr><td>${esc(r['Date'])}</td><td>${esc(r['Punch In']||'—')}</td><td>${esc(r['Punch Out']||'—')}</td><td>${esc(r['Working Hours']||'0')}</td>
+    <tr><td>${esc(r['Date'])}</td><td>${formatTime12(r['Punch In'])}</td><td>${formatTime12(r['Punch Out'])}</td><td>${esc(r['Working Hours']||'0')}</td>
     <td><span class="badge ${esc(r['Status'])}">${esc(r['Status'])}</span></td></tr>`).join('')
     : '<tr><td colspan="5" class="empty-mini">No attendance records yet</td></tr>';
 
@@ -562,9 +609,11 @@ function filterPayroll() {
 document.getElementById('payrollSearch').addEventListener('input', debounce(filterPayroll, 200));
 document.getElementById('payrollMonthFilter').addEventListener('change', filterPayroll);
 function payslipHtml(r) {
-  return `<div class="payslip-card">
+  const uid = 'payslip_' + String(r['EMP ID']) + '_' + String(r['Month']).replace(/[^A-Za-z0-9]/g, '');
+  return `<div class="payslip-card" id="${uid}">
     <div class="payslip-head">
-      <div><div class="ps-period">Payslip · ${esc(r['Month'])}</div><h3>${esc(r['Employee Name'])}</h3></div>
+      <img class="payslip-logo" src="assets/logo.png" alt="Simply Connect">
+      <div class="ps-title-block"><div class="ps-period">Payslip · ${esc(r['Month'])}</div><h3>${esc(r['Employee Name'])}</h3></div>
       <div class="ps-net"><div class="lbl">Net pay</div><div class="amt">${money(r['Net Salary'])}</div></div>
     </div>
     <div class="payslip-body">
@@ -578,7 +627,21 @@ function payslipHtml(r) {
         <div class="ps-line"><span>Total deductions</span><span class="neg">− ${money(r['Deductions'])}</span></div>
         <div class="ps-line total"><span>Net salary</span><span>${money(r['Net Salary'])}</span></div>
       </div>
-    </div></div>`;
+    </div>
+    <div class="payslip-footer"><button class="btn-secondary" data-pdf-btn onclick="downloadPayslipPdf('${uid}','${esc(r['Employee Name'])}_${esc(r['Month'])}')">&#11015; Download PDF</button></div>
+  </div>`;
+}
+function downloadPayslipPdf(elId, filenameBase) {
+  const el = document.getElementById(elId);
+  if (!el) { toast('Payslip element nahi mila', 'error'); return; }
+  if (typeof html2pdf === 'undefined') { toast('PDF library load nahi ho saki — internet connection check karein', 'error'); return; }
+  const btn = el.querySelector('[data-pdf-btn]');
+  if (btn) btn.style.visibility = 'hidden'; // button khud PDF mein nahi aana chahiye
+  const filename = String(filenameBase || 'payslip').replace(/\s+/g, '_') + '.pdf';
+  html2pdf().set({ margin: 10, filename, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } })
+    .from(el).save()
+    .then(() => { if (btn) btn.style.visibility = ''; })
+    .catch(() => { if (btn) btn.style.visibility = ''; toast('PDF banane mein masla aaya', 'error'); });
 }
 function showPayslip(i) {
   const box = document.getElementById('payslipDetail');
