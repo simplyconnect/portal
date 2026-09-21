@@ -109,7 +109,7 @@ let SELECTED_ROLE = 'Employee';
       wrap.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b === btn));
       const isAdmin = SELECTED_ROLE === 'Admin';
       document.getElementById('loginUserLabel').firstChild.textContent = isAdmin ? 'Admin ID or email' : 'Employee ID or email';
-      document.getElementById('loginUser').placeholder = isAdmin ? 'e.g. syedaliashar#234' : 'e.g. abdulsaboor#5';
+      document.getElementById('loginUser').placeholder = isAdmin ? '' : '';
       document.getElementById('loginError').style.display = 'none';
     });
   });
