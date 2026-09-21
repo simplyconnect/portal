@@ -3,7 +3,7 @@
 ===================================================================== */
 
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzRESiiJcGoxCPdkeNOHMBns4FAq6LLYTxHm_TrvGb_n1lD_Ug_YPe7OlMh8rWyZOJk/exec'
+  API_URL: 'https://script.google.com/macros/s/AKfycbz3lCrqywsf1QiZoFS9Vab5nTu1eQIwBulAIx1YwERc4WtqWH2cVA1VclBiNw80E2-NMg/exec'
 };
 
 /* =====================================================================
@@ -616,7 +616,7 @@ function payslipHtml(r) {
   PAYSLIP_REGISTRY[uid] = r;
   return `<div class="payslip-card" id="${uid}">
     <div class="payslip-head">
-      <img class="payslip-logo" src="assets/logo.png" alt="Simply Connect">
+      <img class="payslip-logo" src="assets/logo-1.png" alt="Simply Connect">
       <div class="ps-title-block"><div class="ps-period">Payslip · ${esc(r['Month'])}</div><h3>${esc(r['Employee Name'])}</h3></div>
       <div class="ps-net"><div class="lbl">Net pay</div><div class="amt">${money(r['Net Salary'])}</div></div>
     </div>
@@ -640,8 +640,18 @@ function payslipHtml(r) {
  * PDF ko seedha jsPDF se "draw" karta hai (koi screenshot/html2canvas nahi) — is liye
  * logo aur layout hamesha sahi, sharp aur consistent aata hai, chahe browser/zoom kuch bhi ho.
  * Format aap ke diye hue "Earning Statement" reference se milta julta hai.
+ * Logo `assets/logo-1.png` (dark/black version, white background ke liye) se hi (dynamically)
+ * load hota hai — uska asal width/height nikal kar sahi aspect ratio ke sath draw karta hai, taaki stretch/squish na ho.
  */
-function downloadPayslipPdf(uid) {
+function loadLogoImage_() {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = 'assets/logo-1.png';
+  });
+}
+async function downloadPayslipPdf(uid) {
   const r = PAYSLIP_REGISTRY[uid];
   if (!r) { toast('Payslip data nahi mila', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF library load nahi ho saki — internet connection check karein', 'error'); return; }
@@ -651,12 +661,20 @@ function downloadPayslipPdf(uid) {
   const margin = 18;
   let y = 22;
 
-  // Header: logo + company name (left), "Earning Statement" (right)
-  try { doc.addImage(LOGO_DATA_URI, 'PNG', margin, y - 9, 16, 13); } catch (e) {}
+  // Header: logo (asal aspect ratio ke sath) + company name (left), "Earning Statement" (right)
+  let logoW = 0;
+  try {
+    const logoImg = await loadLogoImage_();
+    const targetH = 12;
+    logoW = targetH * (logoImg.naturalWidth / logoImg.naturalHeight);
+    doc.addImage(logoImg, 'PNG', margin, y - 8, logoW, targetH);
+  } catch (e) { /* logo load na ho to bhi PDF ban jaye, bas text-only header */ }
+
+  const textX = margin + (logoW ? logoW + 6 : 0);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(30, 42, 56);
-  doc.text('Simply Connect', margin + 20, y - 2);
+  doc.text('Simply Connect', textX, y - 2);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120, 130, 150);
-  doc.text('HR & Payroll', margin + 20, y + 3);
+  doc.text('HR & Payroll', textX, y + 3);
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(46, 95, 163);
   doc.text('Earning Statement', pageW - margin, y, { align: 'right' });
